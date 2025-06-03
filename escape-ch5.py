@@ -3,9 +3,9 @@
 # Art by Rafael Pimenta
 # Typed in by Jason R Blackmor
 
-###########################################
-##  VARIABLES / CONSTANTS, pt I (screen) ##
-###########################################
+############################################
+##  VARIABLES / CONSTANTS, pt I (screen)  ##
+############################################
 
 WIDTH = 800
 HEIGHT = 800
@@ -28,9 +28,9 @@ def get_window_position():
 os.environ['SDL_VIDEO_WINDOW_POS'] = get_window_position()
 
 
-##########################################
-##  VARIABLES / CONSTANTS, pt II (game) ##
-##########################################
+###########################################
+##  VARIABLES / CONSTANTS, pt II (game)  ##
+###########################################
 
 ## game can be ran with: pgzrun <filename.py>
 ### comment out `import pgzrun` & `pgzrun.go()` [last line of script] if you go with this approach
