@@ -54,6 +54,25 @@ LANDER_Y = random.randint(2,11)
 
 TILE_SIZE = 30
 
+player_y, player_x = 2,5
+game_over = False
+
+PLAYER = {
+    'left': [images.spacesuit_left, images.spacesuit_left_1, images.spacesuit_left_2,
+             images.spacesuit_left_3, images.spacesuit_left_4],
+    'right': [images.spacesuit_right, images.spacesuit_right_1, images.spacesuit_right_2,
+              images.spacesuit_right_3, images.spacesuit_right_4],
+    'up': [images.spacesuit_back, images.spacesuit_back_1, images.spacesuit_back_2,
+           images.spacesuit_back_3, images.spacesuit_back_4],
+    'down': [images.spacesuit_front, images.spacesuit_front_1, images.spacesuit_front_2,
+             images.spacesuit_front_3, images.spacesuit_front_4],
+}
+
+player_direction = 'down'
+player_frame = 0
+player_image = PLAYER[player_direction][player_frame]
+player_offset_x, player_offset_y = 0,0
+
 
 ###########
 ##  MAP  ##
@@ -345,6 +364,108 @@ def generate_map():
                 room_map[scenery_y][scenery_x + tile_number] = 255
 
 
+#################
+##  GAME LOOP  ##
+#################
+
+def game_loop():
+    global player_x, player_y, current_room
+    global from_player_x, from_player_y
+    global player_image, player_image_shadow
+    global selected_item, item_carrying, energy
+    global player_offset_x, player_offset_y
+    global player_frame, player_direction
+
+    if game_over:
+        return
+
+    if player_frame > 0:
+        player_frame += 1
+        time.sleep(0.05)
+        if player_frame == 5:
+            player_frame = 0
+            player_offset_x = 0
+            player_offset_y = 0
+
+    # save player's current position
+    old_player_x = player_x
+    old_player_y = player_y
+
+    # move if a directional key is pressed
+    if player_frame == 0:
+        if keyboard.right or keyboard.left or keyboard.up or keyboard.down:
+            from_player_x = player_x
+            from_player_y = player_y
+            player_frame = 1
+
+            if keyboard.right:
+                player_x += 1 
+                player_direction = 'right'
+            elif keyboard.left:  #elif stops player from making diagonal movements
+                player_x -= 1 
+                player_direction = 'left'
+            elif keyboard.up:
+                player_y -= 1 
+                player_direction = 'up'
+            elif keyboard.down:
+                player_y += 1 
+                player_direction = 'down'
+
+    # check for exiting the room
+    if player_x == room_width:  # exiting through RIGHT door
+        # clock.unschedule(hazard_move)
+        current_room += 1
+        generate_map()
+        player_x = 0  # enter at left
+        player_y = int(room_height/2)  # enter at door
+        player_frame = 0
+        # start_room()
+        return
+    if player_x == -1:  # exiting through LEFT door
+        # clock.unschedule(hazard_move)
+        current_room -= 1
+        generate_map()
+        player_x = room_width - 1  # enter at right
+        player_y = int(room_height/2)  # enter at door
+        player_frame = 0
+        # start_room()
+        return
+    if player_y == room_height:  # exiting through BOTTOM door
+        # clock.unschedule(hazard_move)
+        current_room += MAP_WIDTH
+        generate_map()
+        player_x = int(room_width/2)  # enter at door
+        player_y = 0  # enter at top
+        player_frame = 0
+        # start_room()
+        return
+    if player_y == -1:  # exiting through TOP door
+        # clock.unschedule(hazard_move)
+        current_room -= MAP_WIDTH
+        generate_map()
+        player_x = int(room_width/2)  # enter at door
+        player_y = room_height - 1  # enter at bottom
+        player_frame = 0
+        # start_room()
+        return
+
+    # if player is standing somewhere they shouldn't, move them back
+    if room_map[player_y][player_x] not in items_player_may_stand_on:
+        # or hazard_map[player_y][player_x] != 0:
+        player_x = old_player_x
+        player_y = old_player_y
+        player_frame = 0
+    
+    if player_direction == "right" and player_frame > 0:
+        player_offset_x = -1 + (0.25 * player_frame)
+    if player_direction == "left" and player_frame > 0:
+        player_offset_x = 1 - (0.25 * player_frame)
+    if player_direction == "up" and player_frame > 0:
+        player_offset_y = 1 - (0.25 * player_frame)
+    if player_direction == "down" and player_frame > 0:
+        player_offset_y = -1 + (0.25 * player_frame)
+
+
 ################
 ##  EXPLORER  ##
 ################
@@ -354,41 +475,22 @@ def draw():
     generate_map()
     screen.clear()
 
-    # sample items in rooms (2 chairs [6,7] / 3 bookcases [8,9] / 1 plant [12])
-    # room_map[2][4] = 7
-    # room_map[2][6] = 6
-    # room_map[1][1] = 8
-    # room_map[1][2] = 9
-    # room_map[1][8] = 12
-    # room_map[1][9] = 9
-
     for y in range(room_height):
         for x in range(room_width):
             if room_map[y][x] != 255:
                 image_to_draw = objects[room_map[y][x]][0]
-                screen.blit(image_to_draw, (top_left_x + (x*30), top_left_y + (y*30) - image_to_draw.get_height()))
+                screen.blit(image_to_draw, (top_left_x + (x*30),
+                            top_left_y + (y*30) - image_to_draw.get_height()))
+        if player_y == y:
+            image_to_draw = PLAYER[player_direction][player_frame]
+            screen.blit(image_to_draw, (top_left_x + (player_x*30) + (player_offset_x*30),
+                        top_left_y + (player_y*30) + (player_offset_y*30) - image_to_draw.get_height()))                                                                 
 
-def movement():
-    global current_room
-    old_room = current_room
 
-    if keyboard.left:
-        current_room -= 1
-    if keyboard.right:
-        current_room += 1
-    if keyboard.up:
-        current_room -= MAP_WIDTH
-    if keyboard.down:
-        current_room += MAP_WIDTH
+#############
+##  START  ##
+#############
 
-    if current_room > 50:
-        current_room = 50
-    if current_room < 1:
-        current_room = 1
-
-    if current_room != old_room:
-        print("Entering room: " + str(current_room))
-
-clock.schedule_interval(movement, 0.08)
+clock.schedule_interval(game_loop, 0.03)
 
 pgzrun.go()
